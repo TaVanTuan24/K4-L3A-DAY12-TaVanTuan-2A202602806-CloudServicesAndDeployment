@@ -6,7 +6,7 @@
 > Cách trả lời: viết câu trả lời của bạn ngay bên dưới mỗi câu hỏi.
 > `grade.py` đếm số câu đã trả lời (15 điểm cho 10 câu).
 >
-> Họ và tên: Tạ Văn Tuấn  Mã học viên: L3A202602806
+> Họ và tên: Tạ Văn Tuấn  Mã học viên: 2A202602806
 
 ---
 
@@ -16,7 +16,7 @@ Trong `Settings`, `agent_api_key` không có giá trị mặc định nên app c
 khi khởi động nếu thiếu biến môi trường. Hãy mô tả một tình huống cụ thể mà
 việc "chết sớm" này cứu bạn, so với việc để mặc định `"changeme"`.
 
-Trong lần đầu deploy lên Railway tôi quên tạo biến AGENT_API_KEY. Nhờ không có giá trị mặc định, `Settings()` ném lỗi ngay lúc khởi động → container crash → healthcheck đỏ → Railway giữ nguyên bản deploy cũ đang chạy ổn và báo rõ "thiếu AGENT_API_KEY" trong log. Ngược lại, nếu để mặc định `"changeme"`, app vẫn start xanh, `/ask` vẫn nhận request — và bất kỳ ai đoán ra chuỗi `"changeme"` đều gọi được API bằng đúng key chung đó. Tôi chỉ phát hiện cuối tháng khi xem hóa đơn tiền LLM tăng do người lạ gọi. "Chết sớm" ở đây biến một lỗi cấu hình thành lỗi deploy nhìn thấy ngay, thay vì một lỗ hổng bảo mật/ khoản chi chạy ngầm suốt nhiều tuần.
+Giả sử lần đầu set service lên Railway tôi quên tạo biến AGENT_API_KEY trong dashboard. Nhờ trường `agent_api_key` không có giá trị mặc định, tại lúc import `Settings()` pydantic ném `ValidationError` ngay → process không khởi động được → healthcheck của Railway đỏ → Railway giữ bản deploy cũ đang chạy ổn và in rõ lỗi "thiếu AGENT_API_KEY" trong build/runtime log, nên tôi phát hiện ngay khi vừa triển khai. Ngược lại, nếu để mặc định `"changeme"`, app vẫn start xanh, `/ask` vẫn nhận request — và bất kỳ ai đoán ra chuỗi `"changeme"` đều gọi được API bằng đúng key chung đó; tôi chỉ biết cuối tháng khi hóa đơn tiền LLM tăng đột biến. "Chết sớm" ở đây biến một lỗi cấu hình thành lỗi deploy nhìn thấy ngay, thay vì một lỗ hổng bảo mật/khoản chi chạy ngầm nhiều tuần.
 
 ---
 
@@ -26,10 +26,10 @@ Chạy service và gọi `/ask` vài lần. Dán một dòng log JSON bạn thu 
 nêu **hai** việc bạn làm được với dòng log đó mà `print("đã trả lời xong")`
 không làm được.
 
-Một dòng log JSON thật tôi thu được khi gọi `/ask`:
+Một dòng log JSON thật, lấy từ log của service Railway production khi tôi gọi `/ask` với `X-User-Id: sv-test`:
 
 ```json
-{"event": "ask_completed", "level": "info", "timestamp": "2026-09-28T07:57:19.156753+00:00", "user_id": "u1", "tokens_in": 3, "tokens_out": 35, "cost_usd": 2.145e-05}
+{"event": "ask_completed", "level": "info", "timestamp": "2026-09-28T08:48:34.672518+00:00", "user_id": "sv-test", "tokens_in": 3, "tokens_out": 37, "cost_usd": 2.265e-05}
 ```
 
 Hai việc làm được mà `print("đã trả lời xong")` không làm được: (1) máy có thể parse từng trường — tôi lọc `event == "ask_completed"` rồi cộng dồn `cost_usd` theo `user_id` để biết chính xác từng user đã tiêu bao nhiêu; (2) tạo cảnh báo tự động theo ngưỡng (cảnh báo khi tổng `cost_usd` vượt ngân sách) vì giá trị nằm trong trường có tên, không phải chuỗi text tự do phải grep thủ công.
@@ -110,9 +110,7 @@ Chạy `docker compose up --scale agent=3` rồi gọi `/ask` nhiều lần vớ
 `X-User-Id`. Quan sát `history_length` trong response. Nếu lịch sử được lưu
 trong một dict Python thay vì Redis, bạn sẽ thấy con số đó thay đổi thế nào?
 
-Với state lưu trong Redis, `history_length` tăng đều bất kể request rơi vào instance nào: lần 1 = 0, lần 2 = 2 (user + assistant trước đó), lần 3 = 4, v.v., vì cả 3 instance cùng đọc/ghi một Redis chung nên "trí nhớ" được chia sẻ. Nếu lưu history trong một dict Python của mỗi process, mỗi instance giữ RAM riêng: request có thể rơi vào container B trong khi lịch sử nằm ở container A → `history_length` thường xuyên quay về 0, hoặc không tăng — nghĩa là agent "mất trí nhớ" ngẫu nhiên.
-
-TODO_USER_OBSERVATION: để tự quan sát số liệu thật, chạy `docker compose up --scale agent=3` (lưu ý scale ngang với map cổng cố định `8000:8000` sẽ xung đột port — cần thêm nginx load balancer như phần mở rộng trong LAB_GUIDE.md) rồi gọi `/ask` nhiều lần cùng một `X-User-Id` và ghi lại `history_length` thực tế.
+Tôi đã deploy service lên Railway (Redis nội bộ, 1 replica) và gọi `/ask` 3 lần liên tiếp với cùng `X-User-Id: history-test`. Kết quả `history_length` thật thu được lần lượt là **0 → 2 → 4**: mỗi câu hỏi mới đều nhìn thấy đủ 2 message của lượt trước (user + assistant). Điều này khớp với cách `ConversationStore` cài đặt — history ghi vào Redis List `history:<user_id>` (không có dict/list toàn cục nào trong process, đã được test `test_khong_co_bien_toan_cuc_giu_state` kiểm chứng). Nếu thay bằng một dict Python nội bộ của mỗi process, thì khi scale ngang ra nhiều instance, mỗi instance giữ RAM riêng: request rơi vào container B trong khi lịch sử nằm ở container A → `history_length` sẽ thường xuyên quay về 0 hoặc không tăng (agent "mất trí nhớ" ngẫu nhiên). Với plan hiện tại Railway free chỉ có 1 replica nên tôi chưa chạy thử `--scale agent=3` trên cloud; có thể kiểm tra thêm bằng local Docker với `docker compose up --scale agent=3` + nginx LB theo LAB_GUIDE.md.
 
 ---
 
@@ -122,4 +120,4 @@ Ghi lại **một** lỗi bạn gặp khi deploy lên cloud (build fail, health 
 timeout, sai REDIS_URL, app không đọc `$PORT`...): thông báo lỗi là gì, bạn
 tìm ra nguyên nhân bằng cách nào, và sửa ra sao?
 
-TODO_USER_OBSERVATION: phần deploy thật chưa thực hiện được vì tôi chưa có credential/tài khoản cloud trong môi trường này. Sau khi tạo tài khoản Railway (hoặc Render) và push code lên, hãy làm theo các bước trong `DEPLOYMENT.md`, rồi ghi lại MỘT lỗi thật gặp phải (ví dụ build fail trên cloud, health check timeout vì sai PORT, `REDIS_URL` trỏ `localhost`, app không đọc `$PORT`...), kèm theo: thông báo lỗi cụ thể, cách bạn đọc log trên dashboard để chẩn đoán, và cách sửa. Một lỗi điển hình: set `REDIS_URL=redis://localhost:6379/0` trên cloud → `/ready` trả 503 vì `localhost` trong container là chính nó chứ không phải Redis; đọc log thấy `/ready` 503, rồi sửa lại thành connection string của Redis add-on (Upstash / Railway Redis).
+Lỗi thật tôi gặp khi triển khai lên Railway: **service đã chạy nhưng chưa có Redis — biến `REDIS_URL` chưa được đặt, và project không có Redis service nào.** Vì `Settings.redis_url` mặc định là `redis://localhost:6379/0`, mà trong container `localhost` chính là container của agent (không có Redis chạy ở đó), nên `/ready` sẽ trả 503 "not ready". Cách phát hiện: chạy `railway variable list -s production-ai-agent-day12` → danh sách biến không có `REDIS_URL`; `railway service list` → project chỉ có đúng 1 service (agent), không có Redis. Cách sửa: (1) chạy `railway add -d redis` để tạo Redis nội bộ Railway; (2) set biến `REDIS_URL=${{Redis.REDIS_URL}}` (dùng variable reference để không hardcode password vào repo/config); (3) redeploy bằng `railway up`. Kết quả sau khi sửa: `/ready` trả 200 `{"status":"ready","redis":true}` — chứng tỏ agent đã kết nối được Redis thật.

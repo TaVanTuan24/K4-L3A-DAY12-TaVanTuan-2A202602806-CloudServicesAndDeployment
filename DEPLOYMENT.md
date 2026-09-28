@@ -11,16 +11,16 @@
 | Mục | Nội dung |
 |-----|----------|
 | Họ và tên | Tạ Văn Tuấn |
-| Mã học viên | L3A202602806 |
-| Repo | https://github.com/TaVanTuan24/K4-L3A-TaVanTuan-L3A202602806-CloudServiceAndDeployment |
+| Mã học viên | 2A202602806 |
+| Repo | https://github.com/TaVanTuan24/K4-L3A-DAY12-TaVanTuan-2A202602806-CloudServicesAndDeployment |
 
 ## Service
 
 | Mục | Nội dung |
 |-----|----------|
-| Public URL | Chưa deploy — nhập URL HTTPS thật sau khi deploy theo hướng dẫn bên dưới |
+| Public URL | https://production-ai-agent-day12-production.up.railway.app |
 | Platform | Railway |
-| Ngày deploy | Chưa deploy — ghi ngày thực tế sau khi deploy |
+| Ngày deploy | 2026-09-28 |
 
 ## Biến Môi Trường Đã Set Trên Cloud
 
@@ -30,7 +30,7 @@ Ghi tên biến và **nguồn giá trị**, không ghi giá trị:
 |------|--------|---------|
 | `PORT` | ✅ | platform tự gán |
 | `AGENT_API_KEY` | ✅ | đặt trong dashboard, không nằm trong repo |
-| `REDIS_URL` | ✅ | kết nối tới Redis add-on của Railway (hoặc Upstash) |
+| `REDIS_URL` | ✅ | variable reference `${{Redis.REDIS_URL}}` (Redis nội bộ Railway) |
 | `RATE_LIMIT_PER_MINUTE` | ✅ | 10 |
 | `MONTHLY_BUDGET_USD` | ✅ | 10.0 |
 | `LOG_LEVEL` | ✅ | INFO |
@@ -70,10 +70,30 @@ done; echo
 
 ## Kết Quả Chạy Thật
 
-Chưa deploy — dán output của các lệnh trên vào đây sau khi chạy thật:
+Output thật thu được khi gọi vào `https://production-ai-agent-day12-production.up.railway.app`:
 
-```
-TODO_USER_OBSERVATION: sau khi deploy, chạy 5 lệnh curl ở trên và dán output vào đây.
+```text
+# 1. Liveness — /health
+HTTP 200
+{"status":"ok","service":"day12-agent","version":"1.0.0"}
+
+# 2. Readiness — /ready (đã nối được Redis nội bộ Railway)
+HTTP 200
+{"status":"ready","redis":true}
+
+# 3. Không có API key — /ask
+HTTP 401
+{"detail":"invalid or missing API key"}
+
+# 4. Có API key — /ask (X-User-Id: sv-test)
+HTTP 200
+{"answer":"Ngắn gọn: Deploy la gi phụ thuộc vào ba yếu tố — cấu hình qua biến môi trường, health check để orchestrator biết trạng thái, và giới hạn tài nguyên.","user_id":"sv-test","history_length":0,"cost_usd":2.265e-05,"tokens":{"in":3,"out":37}}
+
+# 5. Rate limit — 15 request liên tiếp (X-User-Id: rate-limit-test)
+200 200 200 200 200 200 200 200 200 200 429 429 429 429 429
+
+# 6. History / stateless — 3 request liên tiếp cùng X-User-Id: history-test
+history_length = 0 → 2 → 4
 ```
 
 ## Ảnh Chụp Màn Hình
@@ -83,7 +103,8 @@ TODO_USER_OBSERVATION: sau khi deploy, chạy 5 lệnh curl ở trên và dán o
 - `screenshots/dashboard.png` — trang quản lý service trên Railway (chụp sau khi deploy thật)
 - `screenshots/health.png` — kết quả gọi `/health` từ trình duyệt hoặc curl (chụp sau khi deploy thật)
 
-> Chưa chụp màn hình vì chưa deploy thật. Sau khi deploy, chụp ảnh dashboard Railway và ảnh gọi `/health` rồi đặt vào `screenshots/` với đúng tên trên.
+> Đã deploy thật (Railway). Màn hình chưa có (agent không mở được trình duyệt để chụp
+> ảnh) — cần tự chụp dashboard Railway và ảnh gọi `/health` rồi đặt vào `screenshots/`.
 
 ---
 
