@@ -10,17 +10,17 @@
 
 | Mục | Nội dung |
 |-----|----------|
-| Họ và tên | (điền họ tên) |
-| Mã học viên | (điền mã học viên) |
-| Repo | (điền link repo K4-L3A-DAY12-HoVaTen-MSSV-CloudServicesAndDeployment) |
+| Họ và tên | Tạ Văn Tuấn |
+| Mã học viên | L3A202602806 |
+| Repo | https://github.com/TaVanTuan24/K4-L3A-TaVanTuan-L3A202602806-CloudServiceAndDeployment |
 
 ## Service
 
 | Mục | Nội dung |
 |-----|----------|
-| Public URL | https://TODO-thay-bang-url-that.up.railway.app |
-| Platform | Railway / Render / Cloud Run — (điền platform bạn dùng) |
-| Ngày deploy | (điền ngày) |
+| Public URL | Chưa deploy — nhập URL HTTPS thật sau khi deploy theo hướng dẫn bên dưới |
+| Platform | Railway |
+| Ngày deploy | Chưa deploy — ghi ngày thực tế sau khi deploy |
 
 ## Biến Môi Trường Đã Set Trên Cloud
 
@@ -30,29 +30,29 @@ Ghi tên biến và **nguồn giá trị**, không ghi giá trị:
 |------|--------|---------|
 | `PORT` | ✅ | platform tự gán |
 | `AGENT_API_KEY` | ✅ | đặt trong dashboard, không nằm trong repo |
-| `REDIS_URL` | ✅ | (điền: Redis add-on của platform / Upstash / ...) |
+| `REDIS_URL` | ✅ | kết nối tới Redis add-on của Railway (hoặc Upstash) |
 | `RATE_LIMIT_PER_MINUTE` | ✅ | 10 |
 | `MONTHLY_BUDGET_USD` | ✅ | 10.0 |
 | `LOG_LEVEL` | ✅ | INFO |
 
 ## Lệnh Kiểm Tra
 
-Thay `<URL>` bằng Public URL ở trên:
+Sau khi deploy, thay `$BASE_URL` bằng Public URL thật ở trên:
 
 ```bash
 # 1. Liveness — mong đợi 200 {"status":"ok"}
-curl -i <URL>/health
+curl -i $BASE_URL/health
 
 # 2. Readiness — mong đợi 200 {"status":"ready"} (đã nối được Redis)
-curl -i <URL>/ready
+curl -i $BASE_URL/ready
 
 # 3. Không có API key — mong đợi 401
-curl -i -X POST <URL>/ask \
+curl -i -X POST $BASE_URL/ask \
   -H "Content-Type: application/json" \
   -d '{"question":"Hello"}'
 
 # 4. Có API key — mong đợi 200 kèm câu trả lời
-curl -i -X POST <URL>/ask \
+curl -i -X POST $BASE_URL/ask \
   -H "Content-Type: application/json" \
   -H "X-API-Key: $AGENT_API_KEY" \
   -H "X-User-Id: sv-test" \
@@ -60,7 +60,7 @@ curl -i -X POST <URL>/ask \
 
 # 5. Rate limit — gọi 15 lần, những lần cuối phải trả 429
 for i in $(seq 1 15); do
-  curl -s -o /dev/null -w "%{http_code} " -X POST <URL>/ask \
+  curl -s -o /dev/null -w "%{http_code} " -X POST $BASE_URL/ask \
     -H "Content-Type: application/json" \
     -H "X-API-Key: $AGENT_API_KEY" \
     -H "X-User-Id: sv-test" \
@@ -70,18 +70,20 @@ done; echo
 
 ## Kết Quả Chạy Thật
 
-Dán output của các lệnh trên vào đây:
+Chưa deploy — dán output của các lệnh trên vào đây sau khi chạy thật:
 
 ```
-(điền output)
+TODO_USER_OBSERVATION: sau khi deploy, chạy 5 lệnh curl ở trên và dán output vào đây.
 ```
 
 ## Ảnh Chụp Màn Hình
 
 Đặt ảnh trong thư mục `screenshots/`:
 
-- `screenshots/dashboard.png` — trang quản lý service trên platform
-- `screenshots/health.png` — kết quả gọi `/health` từ trình duyệt hoặc curl
+- `screenshots/dashboard.png` — trang quản lý service trên Railway (chụp sau khi deploy thật)
+- `screenshots/health.png` — kết quả gọi `/health` từ trình duyệt hoặc curl (chụp sau khi deploy thật)
+
+> Chưa chụp màn hình vì chưa deploy thật. Sau khi deploy, chụp ảnh dashboard Railway và ảnh gọi `/health` rồi đặt vào `screenshots/` với đúng tên trên.
 
 ---
 
@@ -97,5 +99,5 @@ Không đăng ký được tài khoản cloud? Vẫn nộp được bài, nhưng
 5. Ghi rõ lý do không deploy được vào phần dưới đây:
 
 ```
-(điền lý do nếu dùng phương án dự phòng, ngược lại xóa mục này)
+Không áp dụng phương án dự phòng — sử dụng deploy thật lên Railway (xem phần "Service" ở trên).
 ```
